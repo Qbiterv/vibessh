@@ -144,7 +144,10 @@ pub async fn sync_shared_applications(
             if exists {
                 continue;
             }
-            let created = crate::services::server_service::create_server(
+            // One Node whose entry could not be made must not cost every
+            // other one its applications: this used to be `?`, which ended
+            // the whole sync before a single application was looked at.
+            let created = match crate::services::server_service::create_server(
                 server_repo,
                 crate::models::ServerInput {
                     name: team_server.name.clone(),
@@ -157,7 +160,13 @@ pub async fn sync_shared_applications(
                     password: None,
                     key_passphrase: None,
                 },
-            )?;
+            ) {
+                Ok(created) => created,
+                Err(err) => {
+                    log::warn!("couldn't add the team's server {} ({}) to this install: {err}", team_server.name, team_server.host);
+                    continue;
+                }
+            };
             local_servers.push(created);
             report.servers_added += 1;
         }
@@ -186,12 +195,19 @@ pub async fn sync_shared_applications(
                 team_id: team.id,
                 permissions,
             };
-            match app_repo.adopt_shared(&adopted)? {
-                AdoptOutcome::Added => report.added += 1,
-                AdoptOutcome::Refreshed => report.refreshed += 1,
-                AdoptOutcome::OwnApplication => continue,
-            }
+            // Kept either way: a record that could not be refreshed this time
+            // is still shared, and must not be pruned below as if it were not.
             kept.insert(application.local_id);
+            match app_repo.adopt_shared(&adopted) {
+                Ok(AdoptOutcome::Added) => report.added += 1,
+                Ok(AdoptOutcome::Refreshed) => report.refreshed += 1,
+                Ok(AdoptOutcome::OwnApplication) => {
+                    kept.remove(&application.local_id);
+                }
+                // One application that could not be written must not cost
+                // the rest theirs, which the `?` this replaced did.
+                Err(err) => log::warn!("couldn't add the shared application {} to this install: {err}", application.name),
+            }
         }
     }
 
