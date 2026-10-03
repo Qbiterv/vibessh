@@ -470,7 +470,7 @@
     "guardRailNote": "This hides the application inside VibeSSH. It is not a security boundary: anyone who can reach the server over SSH can still see it.",
     "canAlso": "Besides viewing and logs, can:",
     "ownerHasAll": "The team owner has every permission through their role.",
-    "permissionsSyncNote": "Permissions on an application reach the Node at the next access sync (Teams → Servers), and apply to this application only.",
+    "permissionsSyncNote": "Permissions on an application reach the Node within a few minutes while your VibeSSH is open, and apply to this application only.",
     "noTeamServerNote": "The server this application runs on isn't shared with this team, so the permissions set here have nowhere to go. Add it under Teams → Servers and come back to this tab."
   },
   "applicationNetwork": {
@@ -2000,7 +2000,7 @@
     "notLocalYet": "This server is not on this computer's list yet. You sign in to it as {{account}}, with the key {{key}} - the button beside this adds it for you.",
     "notSyncedYet": "Nobody has synced access to this server yet, so the account {{account}} may not exist on it. Ask the owner to press “Sync access”; adding the server now works too, but connecting will be refused until the account is created.",
     "portPlaceholder": "Port",
-    "privilegeNote": "A member's account can do exactly what their role allows on this server - the sudo rules are derived from it. A role with nothing that needs root leaves an account that cannot use sudo at all. Some permissions cannot be narrowed: a terminal, installing packages and creating applications are root in practice, so a role granting those still means full privileges. A change to a role reaches the server at the next access sync.",
+    "privilegeNote": "A member's account can do exactly what their role allows on this server - the sudo rules are derived from it. A role with nothing that needs root leaves an account that cannot use sudo at all. Some permissions cannot be narrowed: a terminal, installing packages and creating applications are root in practice, so a role granting those still means full privileges. A change to a role reaches the server within a few minutes while your VibeSSH is open.",
     "removeAria": "Remove {{name}}",
     "removedToast": "Removed {{name}}",
     "revocationFailed": "{{email}} - could not revoke access: {{error}}",
