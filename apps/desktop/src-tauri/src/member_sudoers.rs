@@ -254,6 +254,9 @@ pub struct ApplicationGrant {
 /// directory.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileRule {
+    /// Which Application this is for, so a rule that cannot be written can
+    /// be reported against it.
+    pub application_id: uuid::Uuid,
     /// The Application's own account - `dedicated_user::username`.
     pub account: String,
     /// Its working directory, fixed as the helper's first argument.
@@ -308,6 +311,9 @@ pub enum SkipReason {
     NoConsole,
     /// A runtime with no container or unit on the Node to name.
     NothingToName,
+    /// The application runs as root, with no account of its own for the
+    /// file helper to run as - see `run_application_as_own_account`.
+    NoOwnAccount,
 }
 
 /// A working directory a sudoers rule can hold as a literal argument.
@@ -370,7 +376,7 @@ pub fn application_rules(grant: &ApplicationGrant) -> ApplicationRules {
     let write = held.contains("applications.files.write");
     if write || held.contains("applications.files.read") {
         match rule_safe_directory(&grant.working_directory) {
-            Some(root) => rules.files = Some(FileRule { account: crate::dedicated_user::username(id), root, write }),
+            Some(root) => rules.files = Some(FileRule { application_id: id, account: crate::dedicated_user::username(id), root, write }),
             None => rules.skipped.push(SkippedGrant { application_id: id, reason: SkipReason::FolderUnnameable }),
         }
     }

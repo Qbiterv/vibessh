@@ -286,6 +286,11 @@ export function setApplicationEnvironment(id: string, environment: EnvironmentVa
 }
 
 /** Docker-only, same restriction as `setApplicationResourceLimits`. Patches `runtimeConfig.image` - doesn't touch an already-running container by itself, call `recreateApplication` afterward for a running Docker application to actually pick it up. */
+/** Moves a Docker application on a Node onto its own Linux account instead of root - what lets its files be shared with a team. Only the record changes; a running application needs recreating (`useContainerApply`). See the Rust `run_application_as_own_account`. */
+export function runApplicationAsOwnAccount(id: string): Promise<ApplicationDetail> {
+  return callCommand<ApplicationDetail>("run_application_as_own_account", { id });
+}
+
 export function setApplicationImage(id: string, image: string): Promise<ApplicationDetail> {
   return callCommand<ApplicationDetail>("set_application_image", { id, image });
 }

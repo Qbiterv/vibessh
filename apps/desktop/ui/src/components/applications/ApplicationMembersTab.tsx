@@ -23,7 +23,13 @@ import {
   type CloudApplication,
 } from "@/services/cloudService";
 import { CommandError, errorMessage } from "@/services/tauri";
-import { toastError } from "@/stores/toastStore";
+import { runApplicationAsOwnAccount } from "@/services/applicationService";
+import { queryKeys } from "@/services/queryKeys";
+import { useContainerApply } from "@/hooks/useContainerApply";
+import { useQueryClient } from "@tanstack/react-query";
+import { Dialog } from "@/components/ui/Dialog";
+import { toastError, toastSuccess } from "@/stores/toastStore";
+import type { ApplicationDetail } from "@/types/application";
 import type { CloudApplicationMember, CloudTeam, CloudTeamMember } from "@/types/cloud";
 import "./ApplicationMembersTab.css";
 
@@ -66,9 +72,44 @@ function initialsOf(name: string): string {
  * so, and it must not be dropped - it is the difference between "they can't
  * see it" and "they won't stumble into it", and only the second is true.
  */
-export function ApplicationMembersTab({ applicationId }: { applicationId: string }) {
+/**
+ * Whether this application can have its files shared at all.
+ *
+ * A teammate's file access runs as the application's own Linux account, held
+ * to its folder. An application running as root has no such account, so a
+ * files permission ticked here would reach nothing - sudo answered every file
+ * call with "unknown user", which the teammate saw as a connection problem.
+ */
+function runsAsRoot(application: ApplicationDetail | null | undefined): boolean {
+  if (!application || application.runtimeType !== "docker" || !application.serverId) return false;
+  const config = application.runtimeConfig as { runAsDedicatedUser?: boolean } | null;
+  return config?.runAsDedicatedUser !== true;
+}
+
+export function ApplicationMembersTab({ applicationId, application }: { applicationId: string; application?: ApplicationDetail | null }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const applyToContainer = useContainerApply();
+  const [confirmOwnAccount, setConfirmOwnAccount] = useState(false);
+  const [movingToOwnAccount, setMovingToOwnAccount] = useState(false);
+
+  async function moveToOwnAccount() {
+    setMovingToOwnAccount(true);
+    try {
+      const updated = await runApplicationAsOwnAccount(applicationId);
+      queryClient.setQueryData<ApplicationDetail>(queryKeys.application(applicationId), updated);
+      setConfirmOwnAccount(false);
+      toastSuccess(t("applicationMembers.ownAccountDoneToast"));
+      // Recreated in the background when it is running - the next start is
+      // what creates the account and hands it the folder.
+      void applyToContainer(updated);
+    } catch (err) {
+      toastError(errorMessage(err, t));
+    } finally {
+      setMovingToOwnAccount(false);
+    }
+  }
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -336,6 +377,34 @@ export function ApplicationMembersTab({ applicationId }: { applicationId: string
       )}
 
       {!pendingBackend && !canManage && <p className="application-members-note">{t("applicationMembers.noPermissionNote")}</p>}
+
+      {runsAsRoot(application) && (
+        <div className="application-members-note application-members-note-pending application-members-own-account">
+          <Icon name="alert-triangle" size={14} />
+          <span>{t("applicationMembers.ownAccountNote")}</span>
+          {canManage && (
+            <Button size="sm" variant="secondary" onClick={() => setConfirmOwnAccount(true)}>
+              {t("applicationMembers.ownAccountButton")}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {confirmOwnAccount && (
+        <Dialog open onClose={() => !movingToOwnAccount && setConfirmOwnAccount(false)} size="sm" title={t("applicationMembers.ownAccountConfirmTitle")}>
+          <div className="modal-body">
+            <p className="dialog-body-text">{t("applicationMembers.ownAccountConfirmBody")}</p>
+            <div className="form-actions">
+              <Button variant="secondary" onClick={() => setConfirmOwnAccount(false)} disabled={movingToOwnAccount}>
+                {t("common.cancel")}
+              </Button>
+              <Button onClick={moveToOwnAccount} disabled={movingToOwnAccount}>
+                {movingToOwnAccount ? t("common.saving") : t("applicationMembers.ownAccountConfirm")}
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+      )}
 
       {members.length === 0 ? (
         <EmptyState icon="users" title={t("applicationMembers.aloneTitle")} description={t("applicationMembers.aloneDescription")} />

@@ -212,6 +212,12 @@ pub async fn update_application_config(
 ///
 /// `removeFiles` is passed explicitly by the caller and defaults to off -
 /// it is the only step that destroys the operator's own data.
+/// See `services::run_application_as_own_account`.
+#[tauri::command]
+pub fn run_application_as_own_account(repo: State<ApplicationRepository>, id: Uuid) -> AppResult<ApplicationDetail> {
+    services::run_application_as_own_account(&repo, id)
+}
+
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn delete_application(

@@ -104,6 +104,34 @@ pub fn set_application_resource_limits(
 /// (`recreate_application`) for a running Application to actually pick up
 /// the new image, same "change it, save it, then Recreate" pattern the
 /// frontend already applies for resource limits/environment/ports.
+/// Runs a Docker application as its own Linux account on the Node, instead of
+/// as root.
+///
+/// What makes its files shareable with a team: a member's file access runs
+/// the file helper as the application's own account, held to its folder
+/// (`member_sudoers::FileRule`), and an application running as root has no
+/// such account. The alternative - the helper as root - would let a member
+/// with write access mark a file of theirs setuid and become root on the
+/// whole Node.
+///
+/// Only the record changes here. The next start creates the account and
+/// hands it the folder (`runtime::docker`), so a running application needs
+/// recreating, which the interface does as it does for any other setting.
+pub fn run_application_as_own_account(repo: &ApplicationRepository, id: Uuid) -> AppResult<ApplicationDetail> {
+    refuse_if_shared(repo, id, "applications.config")?;
+    let detail = get_application(repo, id)?;
+    if detail.application.runtime_type != RuntimeType::Docker {
+        return Err(AppError::InvalidInput("only a Docker application can run as its own account".into()));
+    }
+    if detail.application.server_id.is_none() {
+        return Err(AppError::InvalidInput("an application on this computer has no account of its own to run as".into()));
+    }
+    let mut runtime_config = detail.runtime_config.clone();
+    let object = runtime_config.as_object_mut().ok_or_else(|| AppError::Internal("runtime_config wasn't a JSON object".into()))?;
+    object.insert("runAsDedicatedUser".to_string(), serde_json::json!(true));
+    repo.update_runtime_config(id, &runtime_config)
+}
+
 pub fn set_application_image(repo: &ApplicationRepository, id: Uuid, image: String) -> AppResult<ApplicationDetail> {
     let detail = get_application(repo, id)?;
     if detail.application.runtime_type != RuntimeType::Docker {

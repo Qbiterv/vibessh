@@ -55,7 +55,7 @@ pub use application_service::{
     connect_applications, disconnect_applications, list_application_links,
     list_blueprints, list_registry_credentials, recreate_application, reinstall_application, refresh_application_status, remove_application_port,
     remove_registry_credential, restart_application,
-    pull_application_image, set_application_environment, set_application_health_check, set_application_image, set_application_resource_limits,
+    pull_application_image, set_application_environment, set_application_health_check, set_application_image, set_application_resource_limits, run_application_as_own_account,
     set_registry_credential, start_application,
     stop_application, update_application_config, update_application_port,
 };

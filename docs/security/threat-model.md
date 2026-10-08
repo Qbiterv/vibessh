@@ -227,6 +227,14 @@ still holds no Node credential; the sync still needs the administrator's app
 running, and a revocation that could not land stays pending on the Teams
 page.
 
+**A member's file access never runs as root.** It runs the file helper as
+the application's own account, held to its folder. An application running
+as root has no such account, so its file grant is skipped and reported
+(`SkipReason::NoOwnAccount`) and the Users tab offers to move it onto one
+(`run_application_as_own_account`). Running the helper as root instead was
+rejected: a member with write access could mark a file of theirs setuid and
+be root on the whole Node.
+
 **The member's side** makes local entries for the team's Nodes itself: the
 member account, this device's key (`shared_application_service`). It never
 edits or removes an entry the person made by hand, and it removes its own

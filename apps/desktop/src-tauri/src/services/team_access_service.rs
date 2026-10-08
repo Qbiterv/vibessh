@@ -111,8 +111,9 @@ pub async fn sync_team_access(
 
     // Each member's per-application rules, for the Applications on this Node
     // only - the grants cover every Node the team shares.
-    let rules_by_member: Vec<Vec<member_sudoers::ApplicationRules>> =
+    let mut rules_by_member: Vec<Vec<member_sudoers::ApplicationRules>> =
         members.iter().map(|member| application_rules_on(member, team_server_id)).collect();
+    drop_file_rules_without_an_account(&connection, &mut rules_by_member).await;
 
     // Installed before anybody is granted it, so a console rule never names
     // a writer that is not there yet.
@@ -410,6 +411,42 @@ fn application_rules_on(member: &CloudMemberAccess, team_server_id: Uuid) -> Vec
             },
         })
         .collect()
+}
+
+/// Takes the file rule off every application that has no account of its own
+/// on this Node, and says so.
+///
+/// A file grant runs the helper as the application's own account. An
+/// application running as root has none, and the rule used to be written
+/// anyway: sudo then answered every file operation with "unknown user", which
+/// the member saw as a connection problem. Now the grant is reported as
+/// skipped, and the Users tab offers to move the application onto its own
+/// account. Left as it is when the check itself fails - better a rule that
+/// may not work than one taken away for no reason.
+async fn drop_file_rules_without_an_account(connection: &crate::ssh::SshSession, rules_by_member: &mut [Vec<member_sudoers::ApplicationRules>]) {
+    let accounts: std::collections::BTreeSet<String> =
+        rules_by_member.iter().flatten().filter_map(|rules| rules.files.as_ref().map(|files| files.account.clone())).collect();
+    if accounts.is_empty() {
+        return;
+    }
+    let names: Vec<String> = accounts.iter().map(|account| crate::ssh::command::quote(account)).collect();
+    let script = format!("for account in {}; do id -u \"$account\" >/dev/null 2>&1 && echo \"$account\"; done", names.join(" "));
+    let present: std::collections::HashSet<String> = match connection.execute_command(&script).await {
+        Ok(output) => output.stdout.lines().map(|line| line.trim().to_string()).collect(),
+        Err(err) => {
+            log::warn!("couldn't check which applications have their own account, keeping their file rules: {err}");
+            return;
+        }
+    };
+    for rules in rules_by_member.iter_mut().flatten() {
+        let Some(files) = &rules.files else { continue };
+        if present.contains(&files.account) {
+            continue;
+        }
+        let application_id = files.application_id;
+        rules.files = None;
+        rules.skipped.push(member_sudoers::SkippedGrant { application_id, reason: member_sudoers::SkipReason::NoOwnAccount });
+    }
 }
 
 /// Puts the console writer in place when it is missing or out of date - the

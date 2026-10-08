@@ -771,6 +771,16 @@ fn build_create_args(ctx: &RuntimeContext<'_>, config: &DockerConfig, name: &str
     if let Some(user) = user_flag {
         args.push("--user".into());
         args.push(user.into());
+        // The account has no entry in the image's /etc/passwd, so HOME
+        // would be `/`, which it cannot write - and `npm install` keeps
+        // its cache under HOME, so a Node.js bot moved onto its own account
+        // failed to start. The application's own folder is the one place it
+        // can write. Not a secret, so an argument is fine here; and only
+        // when the environment does not set HOME itself.
+        if !ctx.environment.iter().any(|variable| variable.key == "HOME") {
+            args.push("-e".into());
+            args.push(format!("HOME={container_directory}"));
+        }
     }
     if let Some(mb) = config.memory_limit_mb {
         args.push("--memory".into());
@@ -1934,6 +1944,31 @@ second
         let args = build_create_args(&ctx, &config, "vibessh-app-test", Some("1000:1000"), None).unwrap();
         assert_eq!(flag_value(&args, "--user"), Some("1000:1000"), "{args:?}");
         assert!(index_of(&args, "--user") < index_of(&args, "alpine:latest"), "{args:?}");
+    }
+
+    /// An account with no passwd entry gets HOME=/ and cannot write it, and
+    /// `npm install` keeps its cache there - so a Node.js bot moved onto its
+    /// own account would not start. The folder is HOME unless the
+    /// environment says otherwise.
+    #[test]
+    fn an_own_account_gets_its_folder_as_home_unless_the_environment_sets_one() {
+        let application = stub_application(Uuid::new_v4());
+        let config = DockerConfig { image: "node:22-alpine".into(), command: vec![], memory_limit_mb: None, cpu_limit_cores: None, restart_policy: None, run_as_dedicated_user: true };
+        let runtime_config = serde_json::json!({});
+        let ctx = RuntimeContext { application: &application, runtime_config: &runtime_config, environment: &[], ports: &[], links: &[], connection: None };
+        let args = build_create_args(&ctx, &config, "vibessh-app-test", Some("1000:1000"), None).unwrap();
+        let home = flag_value(&args, "-e").unwrap_or_default();
+        assert!(home.starts_with("HOME=") && home.len() > "HOME=".len(), "{args:?}");
+        assert!(index_of(&args, "-e") < index_of(&args, "node:22-alpine"), "{args:?}");
+
+        let own = [EnvironmentVariable { key: "HOME".into(), value: "/data".into(), is_secret: false }];
+        let ctx = RuntimeContext { application: &application, runtime_config: &runtime_config, environment: &own, ports: &[], links: &[], connection: None };
+        let args = build_create_args(&ctx, &config, "vibessh-app-test", Some("1000:1000"), None).unwrap();
+        assert!(index_of(&args, "-e").is_none(), "the environment's own HOME must win: {args:?}");
+
+        let ctx = RuntimeContext { application: &application, runtime_config: &runtime_config, environment: &[], ports: &[], links: &[], connection: None };
+        let args = build_create_args(&ctx, &config, "vibessh-app-test", None, None).unwrap();
+        assert!(index_of(&args, "-e").is_none(), "root keeps the image's HOME: {args:?}");
     }
 
     #[test]

@@ -117,6 +117,9 @@ pub enum ErrorCode {
     /// A Node cannot leave the Vibe Network while ports are bound to its
     /// mesh address. Carries the ports, because they are the fix.
     NetworkLeaveHasMeshPorts,
+    /// A teammate's file access runs as the application's own account, and
+    /// this application has none - it runs as root.
+    ApplicationHasNoOwnAccount,
     /// The panel refused the Application API key outright.
     PterodactylKeyRejected,
     /// The key was accepted, but has none of the resource permissions the
@@ -348,6 +351,9 @@ pub enum AppError {
     #[error("this Node still has ports set to Vibe Network only ({}) - change them before it leaves", ports.join(", "))]
     NetworkLeaveHasMeshPorts { ports: Vec<String> },
 
+    #[error("this application runs as root, with no account of its own, so its files cannot be shared - its owner can move it onto its own account in the Users tab")]
+    ApplicationHasNoOwnAccount,
+
     // ---- Pterodactyl migration ----
     #[error("the Pterodactyl panel rejected the Application API key")]
     PterodactylKeyRejected,
@@ -390,6 +396,7 @@ impl AppError {
             AppError::DatabaseBindUnsupported => ErrorCode::DatabaseBindUnsupported,
             AppError::DatabaseFirewallRuleFailed { .. } => ErrorCode::DatabaseFirewallRuleFailed,
             AppError::NetworkLeaveHasMeshPorts { .. } => ErrorCode::NetworkLeaveHasMeshPorts,
+            AppError::ApplicationHasNoOwnAccount => ErrorCode::ApplicationHasNoOwnAccount,
             AppError::PterodactylKeyRejected => ErrorCode::PterodactylKeyRejected,
             AppError::PterodactylKeyForbidden { .. } => ErrorCode::PterodactylKeyForbidden,
             AppError::AiAuthFailed => ErrorCode::AiAuthFailed,
@@ -525,7 +532,7 @@ impl Serialize for AppError {
             // problems the user can fix; the rest are the network.
             ErrorCode::DatabaseSocketAuthOnly => "invalid_input",
             ErrorCode::DatabaseBindUnsupported | ErrorCode::DatabaseFirewallRuleFailed => "connection",
-            ErrorCode::NetworkLeaveHasMeshPorts => "invalid_input",
+            ErrorCode::NetworkLeaveHasMeshPorts | ErrorCode::ApplicationHasNoOwnAccount => "invalid_input",
             ErrorCode::PterodactylKeyRejected | ErrorCode::PterodactylKeyForbidden => "unauthorized",
             ErrorCode::AiNotConfigured | ErrorCode::AiAuthFailed | ErrorCode::AiModelUnavailable => "invalid_input",
             ErrorCode::AiRateLimited | ErrorCode::AiProviderUnavailable => "connection",

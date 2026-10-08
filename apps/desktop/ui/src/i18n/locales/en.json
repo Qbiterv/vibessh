@@ -471,7 +471,13 @@
     "canAlso": "Besides viewing and logs, can:",
     "ownerHasAll": "The team owner has every permission through their role.",
     "permissionsSyncNote": "Permissions on an application reach the Node within a few minutes while your VibeSSH is open, and apply to this application only.",
-    "noTeamServerNote": "The server this application runs on isn't shared with this team, so the permissions set here have nowhere to go. Add it under Teams → Servers and come back to this tab."
+    "noTeamServerNote": "The server this application runs on isn't shared with this team, so the permissions set here have nowhere to go. Add it under Teams → Servers and come back to this tab.",
+    "ownAccountNote": "This application runs as root on the server, so its files cannot be shared - a teammate's file access runs as the application's own account, and it has none. Starting, stopping, the console and the logs work regardless.",
+    "ownAccountButton": "Run on its own account",
+    "ownAccountConfirmTitle": "Run this application on its own account?",
+    "ownAccountConfirmBody": "VibeSSH creates a Linux account for this application, gives it the application's folder and runs it as that account instead of as root. If it is running, it restarts now. Most applications do not notice; one that installs system packages or writes outside its folder may stop working - check it starts afterwards.",
+    "ownAccountConfirm": "Run on its own account",
+    "ownAccountDoneToast": "The application now runs on its own account."
   },
   "applicationNetwork": {
     "access": "Network access",
@@ -945,7 +951,8 @@
     "internal": "Something went wrong inside VibeSSH: {{message}}",
     "database_bind_unsupported": "This database server is too old to listen on more than one address (MariaDB 10.11 or MySQL 8.0.13 is needed), so applications in containers cannot reach it. VibeSSH will not make it listen on every address instead, because that would put it on the internet. Upgrade the database server - it is 10.11 on Ubuntu 24.04 and Debian 12.",
     "database_firewall_rule_failed": "The database now listens where containers can reach it, but the firewall refused the rule that lets them through on port {{port}}. Check ufw on the node, then run the repair again.",
-    "network_leave_has_mesh_ports": "This node still has ports set to Vibe Network only: {{ports}}. They listen on its private address, which leaving takes away, so they would stop starting. Change each one to Public or Localhost only on its Ports tab first."
+    "network_leave_has_mesh_ports": "This node still has ports set to Vibe Network only: {{ports}}. They listen on its private address, which leaving takes away, so they would stop starting. Change each one to Public or Localhost only on its Ports tab first.",
+    "application_has_no_own_account": "This application runs as root on the server, with no account of its own, so its files cannot be shared. Its owner can move it onto its own account in the application's Users tab."
   },
   "cloudErrors": {
     "reset_code_invalid": "That code is wrong, already used or expired. Ask for a new one.",
@@ -1990,7 +1997,8 @@
     "skipped": {
       "folder_unnameable": "{{application}}: this application's folder can't be written into a sudo rule, so file access was not given",
       "no_console": "{{application}}: a systemd service has no console, so the console permission gives nothing here",
-      "nothing_to_name": "{{application}}: this application runs neither in Docker nor as a systemd service, so there is nothing on the Node to give"
+      "nothing_to_name": "{{application}}: this application runs neither in Docker nor as a systemd service, so there is nothing on the Node to give",
+      "no_own_account": "{{application}}: this application runs as root and has no account of its own, so file access was not given. Its Users tab can move it onto one."
     },
     "grantOk": "{{email}} - account {{account}} created",
     "hostPlaceholder": "Host",

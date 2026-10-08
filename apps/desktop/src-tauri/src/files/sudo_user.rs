@@ -620,6 +620,14 @@ impl SudoUserApplicationFileProvider {
         Ok(if relative.is_empty() { self.root.clone() } else { format!("{}/{}", self.root.trim_end_matches('/'), relative) })
     }
 
+    /// What a failed helper call means. sudo refusing to run as the
+    /// application's account because there is no such account is not a
+    /// connection problem, though that is what it used to be shown as: the
+    /// application runs as root and has no account to share files through.
+    fn helper_failure(&self, stderr: &str, fallback: String) -> AppError {
+        classify_helper_failure(&self.username, stderr, fallback)
+    }
+
     async fn run_helper(&self, op: &str, args: &[&str]) -> AppResult<String> {
         let mut command = format!("sudo -u {} {} {} {}", shell_quote(&self.username), shell_quote(HELPER_PATH), shell_quote(&self.root), shell_quote(op));
         for arg in args {
@@ -628,9 +636,7 @@ impl SudoUserApplicationFileProvider {
         }
         let output = self.connection.execute_command(&command).await?;
         if output.exit_code != 0 {
-            let detail = output.stderr.trim();
-            let detail = if detail.is_empty() { format!("'{op}' failed") } else { detail.to_string() };
-            return Err(AppError::Connection(detail));
+            return Err(self.helper_failure(&output.stderr, format!("'{op}' failed")));
         }
         Ok(output.stdout)
     }
@@ -758,10 +764,7 @@ impl ApplicationFileProvider for SudoUserApplicationFileProvider {
                     .unwrap_or(max_bytes + 1);
                 Err(super::too_large_to_edit(path, size))
             }
-            _ => {
-                let detail = output.stderr.trim();
-                Err(AppError::Connection(if detail.is_empty() { "'readsmall' failed".to_string() } else { detail.to_string() }))
-            }
+            _ => Err(self.helper_failure(&output.stderr, "'readsmall' failed".to_string())),
         }
     }
 
@@ -812,10 +815,7 @@ impl ApplicationFileProvider for SudoUserApplicationFileProvider {
                     log::warn!("couldn't keep a history copy of {path} before saving it: {}", output.stderr.trim());
                     backup = None;
                 }
-                _ => {
-                    let detail = output.stderr.trim();
-                    return Some(Err(AppError::Connection(if detail.is_empty() { "'writein' failed".to_string() } else { detail.to_string() })));
-                }
+                _ => return Some(Err(self.helper_failure(&output.stderr, "'writein' failed".to_string()))),
             }
         }
         Some(Err(AppError::Connection("the save did not complete".to_string())))
@@ -966,9 +966,28 @@ fn release_staging_command(username: &str, staging: &str) -> String {
     )
 }
 
+fn classify_helper_failure(username: &str, stderr: &str, fallback: String) -> AppError {
+    let detail = stderr.trim();
+    if detail.contains("unknown user") && detail.contains(username) {
+        return AppError::ApplicationHasNoOwnAccount;
+    }
+    AppError::Connection(if detail.is_empty() { fallback } else { detail.to_string() })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// What a teammate saw as "connection problem: sudo: unknown user" is an
+    /// application with no account of its own - said as that, with the fix.
+    #[test]
+    fn a_missing_application_account_is_told_apart_from_a_connection_problem() {
+        let stderr = "sudo: unknown user vibessh-app-b5807e34b09c\nsudo: error initializing audit plugin sudoers_audit";
+        assert!(matches!(classify_helper_failure("vibessh-app-b5807e34b09c", stderr, "x".into()), AppError::ApplicationHasNoOwnAccount));
+        // Somebody else's account missing is not this application's problem.
+        assert!(matches!(classify_helper_failure("vibessh-app-0123456789ab", stderr, "x".into()), AppError::Connection(_)));
+        assert!(matches!(classify_helper_failure("vibessh-app-b5807e34b09c", "", "'list' failed".into()), AppError::Connection(message) if message == "'list' failed"));
+    }
 
     /// The whole generated script, through `sh -n` - it is assembled from a
     /// format string and a shared function, which is where a stray brace or

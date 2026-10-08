@@ -70,6 +70,7 @@ Każda aplikacja na udostępnionym serwerze jest udostępniana zespołowi automa
 - **Konto z tym adresem już istnieje** — ta osoba ma już konto. Dodaj ją jako członka zamiast tworzyć nowe.
 - **Nowy członek i tak może wszystko** — serwer nie jest udostępniony zespołowi, albo osoba korzysta z tego samego komputera co Ty i widzi Twoje lokalne serwery.
 - **Członek widzi serwer, ale nie może się połączyć** - Twój VibeSSH nie był otwarty od czasu dodania tej osoby albo nie zalogowała się jeszcze na tym komputerze. Otwórz VibeSSH i poczekaj kilka minut.
+- **Członek nie może otworzyć plików aplikacji** - aplikacja działa jako root, a dostęp członka do plików działa przez własne konto aplikacji. Otwórz aplikację -> **Użytkownicy** -> **Uruchamiaj na własnym koncie**. Aplikacja się zrestartuje; sprawdź, czy wstała.
 - **Członek dostaje prośbę o hasło roota** - dodał serwer ręcznie. Niech usunie ten wpis; właściwy jest ten, który dodała jego aplikacja.
 
 ## Więcej informacji

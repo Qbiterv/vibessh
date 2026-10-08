@@ -68,6 +68,7 @@ They should not add the team's server by hand. Their app does it, under the righ
 - **An account with this email already exists** - that person already has an account. Add them as a member instead.
 - **A new member can still do everything** - the server is not shared with the team, or they are using the same computer as you and can see your local servers.
 - **The member sees the server, but it does not connect** - your VibeSSH has not been open since they were added, or they have not signed in on that computer yet. Open VibeSSH and wait a few minutes.
+- **The member cannot open an application's files** - the application runs as root, and a member's file access works through the application's own account. Open the application -> **Users** -> **Run on its own account**. It restarts; check it starts.
 - **The member is asked for a root password** - they added the server by hand. They should remove that entry; the one their app added is the one to use.
 
 ## More detail

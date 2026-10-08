@@ -37,6 +37,7 @@ export type ErrorCode =
   | "database_bind_unsupported"
   | "database_firewall_rule_failed"
   | "network_leave_has_mesh_ports"
+  | "application_has_no_own_account"
   // Vibe AI. Four codes rather than one because the remedy differs: fix the
   // settings, replace the key, correct the model name, or wait and retry.
   | "ai_not_configured"

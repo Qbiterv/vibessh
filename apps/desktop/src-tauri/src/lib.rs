@@ -254,6 +254,7 @@ pub fn run() {
             commands::application_commands::set_application_resource_limits,
             commands::application_commands::set_application_environment,
             commands::application_commands::set_application_image,
+            commands::application_commands::run_application_as_own_account,
             commands::application_commands::pull_application_image,
             commands::application_commands::list_registry_credentials,
             commands::application_commands::set_registry_credential,

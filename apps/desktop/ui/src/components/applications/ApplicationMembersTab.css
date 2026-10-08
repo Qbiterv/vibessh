@@ -179,3 +179,16 @@
   color: var(--text-tertiary);
   font-size: 12px;
 }
+
+/* The note asking to move a root application onto its own account: the
+   action sits at the end of the sentence that explains it. */
+.application-members-own-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.application-members-own-account > span {
+  flex: 1 1 260px;
+}

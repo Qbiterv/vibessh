@@ -1102,7 +1102,7 @@ export function ApplicationDetail() {
           )}
           {tab === "backups" && !shared && <ApplicationBackupsTab applicationId={id} applicationStatus={application.status} />}
           {tab === "schedules" && schedulesAvailable && <SchedulesTab applicationId={id} canManage={canLifecycle} />}
-          {tab === "members" && !shared && <ApplicationMembersTab applicationId={id} />}
+          {tab === "members" && !shared && <ApplicationMembersTab applicationId={id} application={application} />}
           {tab === "minecraft" && minecraft.status && <MinecraftStatusCard status={minecraft.status} history={minecraft.history} />}
           {tab === "restarts" && scheduler.status && <SchedulerStatusCard status={scheduler.status} fetchedAt={scheduler.fetchedAt} />}
         </div>

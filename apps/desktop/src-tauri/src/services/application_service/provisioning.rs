@@ -370,6 +370,13 @@ fn carry_over_operator_settings(current: &serde_json::Value, rendered_before: Op
             }
         }
     }
+    // Moving an application onto its own account is a choice made after
+    // creating it, and the blueprint does not render it for most types. Kept
+    // when on - but never removed when off, because the Java blueprints
+    // render it on themselves and an older record may not carry the key.
+    if current.get("runAsDedicatedUser").and_then(serde_json::Value::as_bool) == Some(true) {
+        target.insert("runAsDedicatedUser".to_string(), serde_json::json!(true));
+    }
     if let (Some(image), Some(before)) = (current.get("image"), rendered_before) {
         if before.get("image") == target.get("image") {
             target.insert("image".to_string(), image.clone());
@@ -689,6 +696,22 @@ mod rerender_tests {
         assert_eq!(rebuilt["diskLimitMb"], 20480, "{rebuilt}");
         assert_eq!(rebuilt["image"], "ghcr.io/example/custom-java:21", "{rebuilt}");
         assert!(rebuilt["command"].as_array().unwrap().iter().any(|arg| arg == "-Dterminal.ansi=true"), "{rebuilt}");
+    }
+
+    /// Moving an application onto its own account is not something its
+    /// blueprint renders, so a recreate or reinstall would have quietly put
+    /// it back on root - and taken a teammate's file access with it.
+    #[test]
+    fn running_as_its_own_account_survives_a_rebuild_and_is_never_taken_away() {
+        let mut rendered = serde_json::json!({ "image": "node:22-alpine" });
+        carry_over_operator_settings(&serde_json::json!({ "image": "node:22-alpine", "runAsDedicatedUser": true }), None, &mut rendered);
+        assert_eq!(rendered["runAsDedicatedUser"], true, "{rendered}");
+
+        // A Java blueprint renders it on itself; an older record without the
+        // key must not switch it off.
+        let mut java = serde_json::json!({ "image": "eclipse-temurin:21-jre", "runAsDedicatedUser": true });
+        carry_over_operator_settings(&serde_json::json!({ "image": "eclipse-temurin:21-jre" }), None, &mut java);
+        assert_eq!(java["runAsDedicatedUser"], true, "{java}");
     }
 
     /// Nothing set after creation means nothing is invented.
